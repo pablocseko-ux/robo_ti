@@ -1,0 +1,31 @@
+# Ambiente virtual
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+
+# Variáveis de ambiente
+.env
+
+# Logs
+logs/
+*.log
+
+# Screenshots
+screenshots/
+
+# Downloads
+downloads/
+
+# Sistema
+.DS_Store
+Thumbs.db
