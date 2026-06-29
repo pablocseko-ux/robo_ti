@@ -1,6 +1,5 @@
 import os
 import time
-
 from dotenv import load_dotenv
 
 from selenium import webdriver
@@ -48,7 +47,6 @@ def forcar_valor_extjs(driver, campo, valor=""):
         const value = arguments[1];
 
         input.focus();
-
         input.value = '';
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -58,7 +56,6 @@ def forcar_valor_extjs(driver, campo, valor=""):
         input.dispatchEvent(new Event('change', { bubbles: true }));
         input.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
         input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
-
         input.blur();
 
         if (window.Ext) {
@@ -80,16 +77,23 @@ def criar_driver():
     options = Options()
     options.add_argument("--start-maximized")
 
-    # Perfil fixo do Chrome para o robô
     options.add_argument(r"--user-data-dir=C:\ChromeRoboFatorRH")
     options.add_argument("--profile-directory=Default")
 
-    # Downloads automáticos
+    # Permitir conteúdo/download inseguro no Chrome do robô
+    options.add_argument("--allow-running-insecure-content")
+    options.add_argument("--unsafely-treat-insecure-origin-as-secure=http://54.94.113.205:8079")
+    options.add_argument("--disable-features=BlockInsecurePrivateNetworkRequests")
+    options.add_argument("--disable-web-security")
+
     prefs = {
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
         "safebrowsing.enabled": False,
+        "safebrowsing.disable_download_protection": True,
         "profile.default_content_setting_values.automatic_downloads": 1,
+        "profile.default_content_setting_values.insecure_content": 1,
+        "profile.default_content_settings.popups": 0,
     }
 
     options.add_experimental_option("prefs", prefs)
@@ -175,43 +179,72 @@ def preencher_filtros_desligados(driver, wait):
 
     print(f"Campos de data encontrados: {len(campos_visiveis)}")
 
-    for i, campo in enumerate(campos_visiveis):
-        print(
-            f"{i} | id={campo.get_attribute('id')} | "
-            f"name={campo.get_attribute('name')} | "
-            f"value={campo.get_attribute('value')}"
-        )
-
     if len(campos_visiveis) < 4:
         raise Exception(
             f"Não encontrei todos os campos de data. Encontrados: {len(campos_visiveis)}"
         )
 
-    campo_data_admissao_inicial = campos_visiveis[0]
-    campo_data_admissao_final = campos_visiveis[1]
-    campo_desligamento_inicial = campos_visiveis[2]
-    campo_desligamento_final = campos_visiveis[3]
-
-    forcar_valor_extjs(driver, campo_data_admissao_inicial, "")
-    forcar_valor_extjs(driver, campo_data_admissao_final, "")
+    forcar_valor_extjs(driver, campos_visiveis[0], "")
+    forcar_valor_extjs(driver, campos_visiveis[1], "")
+    forcar_valor_extjs(driver, campos_visiveis[2], DATA_DESLIGAMENTO_INICIAL)
+    forcar_valor_extjs(driver, campos_visiveis[3], DATA_DESLIGAMENTO_FINAL)
 
     print("Campos de Data Admissão apagados.")
-
-    forcar_valor_extjs(driver, campo_desligamento_inicial, DATA_DESLIGAMENTO_INICIAL)
-    forcar_valor_extjs(driver, campo_desligamento_final, DATA_DESLIGAMENTO_FINAL)
-
     print(f"Data inicial de desligamento preenchida: {DATA_DESLIGAMENTO_INICIAL}")
     print(f"Data final de desligamento preenchida: {DATA_DESLIGAMENTO_FINAL}")
 
-    time.sleep(1)
 
-    print("Valores após preenchimento:")
+def aceitar_download_bloqueado(driver):
+    time.sleep(3)
 
-    for i, campo in enumerate(campos_visiveis):
-        print(
-            f"{i} | id={campo.get_attribute('id')} | "
-            f"value={campo.get_attribute('value')}"
-        )
+    aba_original = driver.current_window_handle
+
+    driver.execute_script("window.open('chrome://downloads/', '_blank');")
+    driver.switch_to.window(driver.window_handles[-1])
+
+    time.sleep(3)
+
+    try:
+        clicou = driver.execute_script("""
+            const manager = document.querySelector('downloads-manager');
+            if (!manager || !manager.shadowRoot) return false;
+
+            const items = manager.shadowRoot.querySelectorAll('downloads-item');
+
+            for (const item of items) {
+                const root = item.shadowRoot;
+                if (!root) continue;
+
+                const botoes = [
+                    root.querySelector('#keep'),
+                    root.querySelector('#save-dangerous'),
+                    root.querySelector('#save-dangerous-button'),
+                    root.querySelector('cr-button[focus-type="save"]')
+                ];
+
+                for (const botao of botoes) {
+                    if (botao) {
+                        botao.click();
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        """)
+
+        if clicou:
+            print("Clique em 'Manter' executado.")
+        else:
+            print("Botão 'Manter' não encontrado em chrome://downloads.")
+
+    except Exception as e:
+        print(f"Erro ao tentar aceitar download bloqueado: {e}")
+
+    time.sleep(2)
+
+    driver.close()
+    driver.switch_to.window(aba_original)
 
 
 def selecionar_xlsx_e_baixar(driver, wait):
@@ -235,9 +268,6 @@ def selecionar_xlsx_e_baixar(driver, wait):
 
     time.sleep(1)
 
-    # Depois de abrir o combo:
-    # seta para baixo para ir até XLSX
-    # enter para selecionar
     campo_pdf.send_keys(Keys.ARROW_DOWN)
     time.sleep(0.5)
     campo_pdf.send_keys(Keys.ENTER)
@@ -260,7 +290,10 @@ def selecionar_xlsx_e_baixar(driver, wait):
 
     print("OK clicado. Download solicitado.")
 
+    aceitar_download_bloqueado(driver)
+
     time.sleep(10)
+
 
 def executar():
     driver = criar_driver()
