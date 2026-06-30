@@ -1,6 +1,6 @@
 # Ambiente virtual
 .venv/
-
+ venv/
 # Python
 __pycache__/
 *.pyc
@@ -29,3 +29,11 @@ downloads/
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Ambiente virtual alternativo
+venv/
+
+# Relatórios baixados
+*.xlsx
+*.xls
+*.crdownload
