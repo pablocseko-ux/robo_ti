@@ -53,13 +53,14 @@ MESES_PT = {
 #     python fator_rh_prefect.py
 #
 # Horário configurado:
-#     Todo dia às 08:00 da manhã
+#     Todo dia às 08:20 da manhã
 #     Timezone: America/Sao_Paulo
 # ==========================================================
 
 DEPLOYMENT_NAME = "Fator RH - Relatorio Desligados Diario"
-CRON_SCHEDULE = "0 8 * * *"
+CRON_SCHEDULE = "20 8 * * *"
 TIMEZONE = "America/Sao_Paulo"
+PREFECT_API_URL = "http://192.168.17.92:4200/api"
 
 
 def obter_data_execucao():
@@ -429,6 +430,17 @@ def fator_rh_relatorio_desligados_flow():
 
 
 def criar_deployment():
+    # Garante que este robô seja registrado no Prefect Server central.
+    # Também é recomendado executar uma vez no terminal:
+    #     prefect config set PREFECT_API_URL=http://192.168.17.92:4200/api
+    os.environ.setdefault("PREFECT_API_URL", PREFECT_API_URL)
+
+    print("=== Configurando Deployment Fator RH ===")
+    print(f"Prefect API URL: {os.environ.get('PREFECT_API_URL')}")
+    print(f"Deployment: {DEPLOYMENT_NAME}")
+    print(f"Agenda: {CRON_SCHEDULE}")
+    print(f"Timezone: {TIMEZONE}")
+
     fator_rh_relatorio_desligados_flow.serve(
         name=DEPLOYMENT_NAME,
         cron=CRON_SCHEDULE,
